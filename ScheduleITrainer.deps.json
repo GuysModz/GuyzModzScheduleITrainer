@@ -1,0 +1,23 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v8.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v8.0": {
+      "ScheduleITrainer/1.0.0": {
+        "runtime": {
+          "ScheduleITrainer.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "ScheduleITrainer/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
