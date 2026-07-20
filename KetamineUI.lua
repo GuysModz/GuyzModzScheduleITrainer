@@ -326,9 +326,14 @@ function Library:CreateWindow(config)
             end
         end
         self.ActiveTab = tabName
+        -- Update canvas after switching
+        task.wait(0.05)
+        if self.Tabs[tabName] and self.Tabs[tabName].updateCanvas then
+            self.Tabs[tabName]:updateCanvas()
+        end
     end
 
-    -- CreateTab
+    -- CreateTab (FIXED with proper scrolling)
     function Window:CreateTab(name)
         local Tab = {}
         Tab.Name = name
@@ -355,20 +360,49 @@ function Library:CreateWindow(config)
             Size = UDim2.new(1, -8, 1, -4),
             Position = UDim2.new(0, 4, 0, 2),
             BackgroundTransparency = 1,
-            ScrollBarThickness = 3,
+            ScrollBarThickness = 6,
             ScrollBarImageColor3 = T.Accent,
             CanvasSize = UDim2.new(0, 0, 0, 0),
-            AutomaticCanvasSize = Enum.AutomaticSize.Y,
             Visible = false,
             Parent = TabContainer
         })
-        create("UIListLayout", {
+        
+        -- Main layout for the tab content
+        local layout = create("UIListLayout", {
             Padding = UDim.new(0, 5),
             SortOrder = Enum.SortOrder.LayoutOrder,
             Parent = page
         })
         addPadding(page, 4, 4, 4, 4)
+        
+        -- Update canvas size whenever content changes
+        local function updateCanvas()
+            local totalHeight = 0
+            for _, child in ipairs(page:GetChildren()) do
+                if child:IsA("GuiObject") and child.Visible then
+                    totalHeight = totalHeight + child.AbsoluteSize.Y + 5
+                end
+            end
+            page.CanvasSize = UDim2.new(0, 0, 0, totalHeight + 10)
+        end
+        
+        -- Hook into layout changes
+        layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            page.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
+        end)
+        
+        -- Also update when children change
+        page.DescendantAdded:Connect(function(child)
+            if child:IsA("GuiObject") then
+                child:GetPropertyChangedSignal("Visible"):Connect(updateCanvas)
+                child:GetPropertyChangedSignal("Size"):Connect(updateCanvas)
+                task.wait(0.1)
+                updateCanvas()
+            end
+        end)
+        
         Tab.Page = page
+        Tab.updateCanvas = updateCanvas
 
         self.Tabs[name] = Tab
 
@@ -394,7 +428,7 @@ function Library:CreateWindow(config)
         -- CreateSection
         function Tab:CreateSection(sectionName)
             Tab.Order = Tab.Order + 1
-            create("TextLabel", {
+            local section = create("TextLabel", {
                 Size = UDim2.new(1, 0, 0, 24),
                 BackgroundTransparency = 1,
                 Text = "  " .. sectionName:upper(),
@@ -405,6 +439,8 @@ function Library:CreateWindow(config)
                 LayoutOrder = Tab.Order,
                 Parent = page
             })
+            task.defer(updateCanvas)
+            return section
         end
 
         -- CreateToggle
@@ -466,6 +502,7 @@ function Library:CreateWindow(config)
                 tween(togBG, {BackgroundColor3 = value and T.On or T.Off}, 0.2)
                 tween(knob, {Position = value and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)}, 0.2)
                 callback(value)
+                task.defer(updateCanvas)
             end)
 
             local toggleObj = {}
@@ -474,8 +511,10 @@ function Library:CreateWindow(config)
                 tween(togBG, {BackgroundColor3 = value and T.On or T.Off}, 0.2)
                 tween(knob, {Position = value and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)}, 0.2)
                 callback(value)
+                task.defer(updateCanvas)
             end
             function toggleObj:Get() return value end
+            task.defer(updateCanvas)
             return toggleObj
         end
 
@@ -563,6 +602,7 @@ function Library:CreateWindow(config)
                         fill.Size = UDim2.new(p, 0, 1, 0)
                         valLbl.Text = tostring(val)
                         callback(val)
+                        task.defer(updateCanvas)
                     end
                 end
             end)
@@ -574,8 +614,10 @@ function Library:CreateWindow(config)
                 fill.Size = UDim2.new(p, 0, 1, 0)
                 valLbl.Text = tostring(value)
                 callback(value)
+                task.defer(updateCanvas)
             end
             function sliderObj:Get() return value end
+            task.defer(updateCanvas)
             return sliderObj
         end
 
@@ -604,8 +646,10 @@ function Library:CreateWindow(config)
                 tween(btn, {BackgroundColor3 = T.Accent}, 0.1)
                 task.delay(0.15, function() tween(btn, {BackgroundColor3 = T.BG3}, 0.2) end)
                 callback()
+                task.defer(updateCanvas)
             end)
 
+            task.defer(updateCanvas)
             return btn
         end
 
@@ -691,6 +735,7 @@ function Library:CreateWindow(config)
                     tween(card, {Size = UDim2.new(1, 0, 0, closedH)}, 0.2)
                     tween(optContainer, {Size = UDim2.new(0.45, 0, 0, 0)}, 0.2)
                     callback(value)
+                    task.defer(updateCanvas)
                 end)
                 table.insert(optButtons, ob)
             end
@@ -701,6 +746,7 @@ function Library:CreateWindow(config)
                 local cardH = open and (36 + optH + 4) or 36
                 tween(card, {Size = UDim2.new(1, 0, 0, cardH)}, 0.25)
                 tween(optContainer, {Size = UDim2.new(0.45, 0, 0, open and optH or 0)}, 0.25)
+                task.defer(updateCanvas)
             end)
 
             local dropObj = {}
@@ -708,6 +754,7 @@ function Library:CreateWindow(config)
                 value = v
                 selected.Text = v
                 callback(v)
+                task.defer(updateCanvas)
             end
             function dropObj:Get() return value end
             function dropObj:Refresh(newOptions)
@@ -735,10 +782,13 @@ function Library:CreateWindow(config)
                         tween(card, {Size = UDim2.new(1, 0, 0, 36)}, 0.2)
                         tween(optContainer, {Size = UDim2.new(0.45, 0, 0, 0)}, 0.2)
                         callback(value)
+                        task.defer(updateCanvas)
                     end)
                     table.insert(optButtons, ob)
                 end
+                task.defer(updateCanvas)
             end
+            task.defer(updateCanvas)
             return dropObj
         end
 
@@ -790,6 +840,7 @@ function Library:CreateWindow(config)
                 if enter then
                     value = box.Text
                     callback(value)
+                    task.defer(updateCanvas)
                 end
             end)
 
@@ -798,8 +849,10 @@ function Library:CreateWindow(config)
                 value = v
                 box.Text = v
                 callback(v)
+                task.defer(updateCanvas)
             end
             function tbObj:Get() return value end
+            task.defer(updateCanvas)
             return tbObj
         end
 
@@ -823,7 +876,9 @@ function Library:CreateWindow(config)
             local labelObj = {}
             function labelObj:Set(newText)
                 lbl.Text = "  " .. newText
+                task.defer(updateCanvas)
             end
+            task.defer(updateCanvas)
             return labelObj
         end
 
