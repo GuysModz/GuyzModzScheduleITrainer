@@ -1,15 +1,88 @@
--- ===================================================================
--- KETAMINEUI LIBRARY – FIXED WITH BIGGER SIZE & HORIZONTAL SCROLL
--- ===================================================================
+--[[
+    KetamineUI Library
+    A custom UI library with the Ketamine theme.
+    
+    Usage:
+        local Library = loadstring(game:HttpGet("YOUR_RAW_LINK"))()
+        
+        local Window = Library:CreateWindow({
+            Name = "My Script",
+            Subtitle = "v1.0",
+            Size = UDim2.new(0, 380, 0, 500), -- optional
+            ToggleKey = Enum.KeyCode.RightControl -- optional
+        })
+        
+        local Tab = Window:CreateTab("Main")
+        
+        Tab:CreateSection("Combat")
+        
+        Tab:CreateToggle({
+            Name = "Aimbot",
+            Default = false,
+            Callback = function(value) end
+        })
+        
+        Tab:CreateSlider({
+            Name = "FOV Radius",
+            Min = 50,
+            Max = 800,
+            Default = 200,
+            Callback = function(value) end
+        })
+        
+        Tab:CreateButton({
+            Name = "Reset Character",
+            Callback = function() end
+        })
+        
+        Tab:CreateDropdown({
+            Name = "Target Part",
+            Options = {"Head", "HumanoidRootPart", "UpperTorso"},
+            Default = "Head",
+            Callback = function(value) end
+        })
+        
+        Tab:CreateTextbox({
+            Name = "Player Name",
+            Default = "",
+            Placeholder = "Enter name...",
+            Callback = function(value) end
+        })
+        
+        Tab:CreateLabel("Status: Active")
+        
+        -- Update elements:
+        toggle:Set(true)
+        slider:Set(150)
+        dropdown:Set("Head")
+        label:Set("Status: Inactive")
+        
+        -- Notifications:
+        Library:Notify({
+            Title = "Success",
+            Text = "Feature enabled!",
+            Duration = 3
+        })
+        
+        -- Destroy:
+        Library:Destroy()
+]]
+
 local Library = {}
 Library.__index = Library
 
+----------------------------------------------------------------------
+-- Services
+----------------------------------------------------------------------
 local Players          = game:GetService("Players")
 local RunService       = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService     = game:GetService("TweenService")
 local LocalPlayer      = Players.LocalPlayer
 
+----------------------------------------------------------------------
+-- Theme
+----------------------------------------------------------------------
 Library.Theme = {
     Accent    = Color3.fromRGB(155, 89, 255),
     AccentDim = Color3.fromRGB(100, 55, 190),
@@ -25,6 +98,9 @@ Library.Theme = {
     Warning   = Color3.fromRGB(255, 180, 80),
 }
 
+----------------------------------------------------------------------
+-- Utility
+----------------------------------------------------------------------
 local function tween(obj, props, dur)
     local t = TweenService:Create(obj, TweenInfo.new(dur or 0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), props)
     t:Play()
@@ -48,6 +124,15 @@ local function addCorner(parent, radius)
     return create("UICorner", {CornerRadius = UDim.new(0, radius or 8), Parent = parent})
 end
 
+local function addStroke(parent, color, thickness, transparency)
+    return create("UIStroke", {
+        Color = color or Library.Theme.Accent,
+        Thickness = thickness or 1.5,
+        Transparency = transparency or 0.3,
+        Parent = parent
+    })
+end
+
 local function addPadding(parent, l, r, t, b)
     return create("UIPadding", {
         PaddingLeft = UDim.new(0, l or 0),
@@ -58,18 +143,22 @@ local function addPadding(parent, l, r, t, b)
     })
 end
 
+----------------------------------------------------------------------
+-- Library:CreateWindow
+----------------------------------------------------------------------
 function Library:CreateWindow(config)
     config = config or {}
     local T = self.Theme
     local windowName = config.Name or "Ketamine UI"
     local subtitle = config.Subtitle or ""
-    local windowSize = config.Size or UDim2.new(0, 450, 0, 550) -- BIGGER
+    local windowSize = config.Size or UDim2.new(0, 380, 0, 500)
     local toggleKey = config.ToggleKey or Enum.KeyCode.RightControl
 
     local Window = {}
     Window.Tabs = {}
     Window.ActiveTab = nil
 
+    -- ScreenGui
     local ScreenGui = create("ScreenGui", {
         Name = "KetamineUI_" .. windowName,
         ResetOnSpawn = false,
@@ -80,6 +169,7 @@ function Library:CreateWindow(config)
     if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
     Window.ScreenGui = ScreenGui
 
+    -- Main Frame
     local MainFrame = create("Frame", {
         Name = "Main",
         Size = windowSize,
@@ -91,8 +181,10 @@ function Library:CreateWindow(config)
         Parent = ScreenGui
     })
     addCorner(MainFrame, 14)
+    addStroke(MainFrame, T.Accent, 1.5, 0.3)
     Window.MainFrame = MainFrame
 
+    -- Title Bar
     local TitleBar = create("Frame", {
         Size = UDim2.new(1, 0, 0, 48),
         BackgroundColor3 = T.BG2,
@@ -100,6 +192,7 @@ function Library:CreateWindow(config)
         Parent = MainFrame
     })
     addCorner(TitleBar, 14)
+    -- Bottom clip to remove bottom rounding
     create("Frame", {
         Size = UDim2.new(1, 0, 0, 14),
         Position = UDim2.new(0, 0, 1, -14),
@@ -108,6 +201,7 @@ function Library:CreateWindow(config)
         Parent = TitleBar
     })
 
+    -- Title text
     create("TextLabel", {
         Size = UDim2.new(1, -100, 0, 22),
         Position = UDim2.new(0, 16, 0, subtitle ~= "" and 6 or 13),
@@ -120,6 +214,7 @@ function Library:CreateWindow(config)
         Parent = TitleBar
     })
 
+    -- Subtitle
     if subtitle ~= "" then
         create("TextLabel", {
             Size = UDim2.new(1, -100, 0, 14),
@@ -134,12 +229,13 @@ function Library:CreateWindow(config)
         })
     end
 
+    -- Close button
     local CloseBtn = create("TextButton", {
         Size = UDim2.new(0, 22, 0, 22),
         Position = UDim2.new(1, -30, 0, 5),
         BackgroundColor3 = T.Error,
         Text = "X",
-        TextColor3 = Color3.new(1,1,1),
+        TextColor3 = Color3.new(1, 1, 1),
         Font = Enum.Font.GothamBold,
         TextSize = 11,
         AutoButtonColor = false,
@@ -150,12 +246,13 @@ function Library:CreateWindow(config)
     CloseBtn.MouseLeave:Connect(function() tween(CloseBtn, {BackgroundColor3 = T.Error}, 0.15) end)
     CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
+    -- Minimize button
     local MinBtn = create("TextButton", {
         Size = UDim2.new(0, 22, 0, 22),
         Position = UDim2.new(1, -56, 0, 5),
         BackgroundColor3 = T.BG3,
         Text = "-",
-        TextColor3 = Color3.new(1,1,1),
+        TextColor3 = Color3.new(1, 1, 1),
         Font = Enum.Font.GothamBold,
         TextSize = 16,
         AutoButtonColor = false,
@@ -165,6 +262,7 @@ function Library:CreateWindow(config)
     MinBtn.MouseEnter:Connect(function() tween(MinBtn, {BackgroundColor3 = T.AccentDim}, 0.15) end)
     MinBtn.MouseLeave:Connect(function() tween(MinBtn, {BackgroundColor3 = T.BG3}, 0.15) end)
 
+    -- Content area (below title bar)
     local ContentArea = create("Frame", {
         Size = UDim2.new(1, 0, 1, -48),
         Position = UDim2.new(0, 0, 0, 48),
@@ -173,24 +271,12 @@ function Library:CreateWindow(config)
     })
     Window.ContentArea = ContentArea
 
-    -- TAB BAR – HORIZONTAL SCROLLING
-    local TabBarContainer = create("Frame", {
+    -- Tab bar
+    local TabBar = create("Frame", {
         Size = UDim2.new(1, -16, 0, 30),
         Position = UDim2.new(0, 8, 0, 6),
         BackgroundTransparency = 1,
-        ClipsDescendants = true,
         Parent = ContentArea
-    })
-    local TabBar = create("ScrollingFrame", {
-        Size = UDim2.new(1, 0, 1, 0),
-        BackgroundTransparency = 1,
-        ScrollBarThickness = 3,
-        ScrollBarImageColor3 = T.Accent,
-        CanvasSize = UDim2.new(0, 0, 0, 0),
-        ScrollingDirection = Enum.ScrollingDirection.X,
-        VerticalScrollBarPosition = Enum.VerticalScrollBarPosition.Right,
-        ClipsDescendants = true,
-        Parent = TabBarContainer
     })
     local TabLayout = create("UIListLayout", {
         FillDirection = Enum.FillDirection.Horizontal,
@@ -198,33 +284,9 @@ function Library:CreateWindow(config)
         SortOrder = Enum.SortOrder.LayoutOrder,
         Parent = TabBar
     })
-    local function updateTabCanvas()
-        local totalWidth = 0
-        for _, child in ipairs(TabBar:GetChildren()) do
-            if child:IsA("TextButton") and child.Visible then
-                totalWidth = totalWidth + child.AbsoluteSize.X + 4
-            end
-        end
-        TabBar.CanvasSize = UDim2.new(0, totalWidth + 10, 0, 0)
-    end
-    TabLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        TabBar.CanvasSize = UDim2.new(0, TabLayout.AbsoluteContentSize.X + 10, 0, 0)
-    end)
-    TabBar.DescendantAdded:Connect(function(child)
-        if child:IsA("TextButton") then
-            child:GetPropertyChangedSignal("Size"):Connect(updateTabCanvas)
-            child:GetPropertyChangedSignal("Visible"):Connect(updateTabCanvas)
-            task.wait(0.05)
-            updateTabCanvas()
-        end
-    end)
-    TabBar.ChildRemoved:Connect(function()
-        task.wait(0.05)
-        updateTabCanvas()
-    end)
     Window.TabBar = TabBar
-    Window.TabLayout = TabLayout
 
+    -- Tab content container
     local TabContainer = create("Frame", {
         Size = UDim2.new(1, 0, 1, -40),
         Position = UDim2.new(0, 0, 0, 40),
@@ -233,6 +295,7 @@ function Library:CreateWindow(config)
     })
     Window.TabContainer = TabContainer
 
+    -- Minimize logic
     local minimized = false
     MinBtn.MouseButton1Click:Connect(function()
         minimized = not minimized
@@ -240,6 +303,7 @@ function Library:CreateWindow(config)
         tween(MainFrame, {Size = minimized and UDim2.new(0, windowSize.X.Offset, 0, 48) or windowSize}, 0.3)
     end)
 
+    -- Toggle visibility
     local guiVisible = true
     UserInputService.InputBegan:Connect(function(input, gpe)
         if gpe then return end
@@ -249,6 +313,7 @@ function Library:CreateWindow(config)
         end
     end)
 
+    -- Switch tab function
     function Window:SwitchTab(tabName)
         for name, tab in pairs(self.Tabs) do
             tab.Page.Visible = (name == tabName)
@@ -261,17 +326,15 @@ function Library:CreateWindow(config)
             end
         end
         self.ActiveTab = tabName
-        task.wait(0.05)
-        if self.Tabs[tabName] and self.Tabs[tabName].updateCanvas then
-            self.Tabs[tabName]:updateCanvas()
-        end
     end
 
+    -- CreateTab
     function Window:CreateTab(name)
         local Tab = {}
         Tab.Name = name
         Tab.Order = 0
 
+        -- Tab button
         local tabBtn = create("TextButton", {
             Size = UDim2.new(0, 0, 1, 0),
             AutomaticSize = Enum.AutomaticSize.X,
@@ -287,59 +350,26 @@ function Library:CreateWindow(config)
         addPadding(tabBtn, 8, 8, 0, 0)
         Tab.Button = tabBtn
 
-        task.defer(function() updateTabCanvas() end)
-
+        -- Tab page (scrolling frame)
         local page = create("ScrollingFrame", {
             Size = UDim2.new(1, -8, 1, -4),
             Position = UDim2.new(0, 4, 0, 2),
             BackgroundTransparency = 1,
-            ScrollBarThickness = 6,
+            ScrollBarThickness = 3,
             ScrollBarImageColor3 = T.Accent,
             CanvasSize = UDim2.new(0, 0, 0, 0),
+            AutomaticCanvasSize = Enum.AutomaticSize.Y,
             Visible = false,
             Parent = TabContainer
         })
-        
-        local layout = create("UIListLayout", {
+        create("UIListLayout", {
             Padding = UDim.new(0, 5),
             SortOrder = Enum.SortOrder.LayoutOrder,
             Parent = page
         })
         addPadding(page, 4, 4, 4, 4)
-        
-        local function updateCanvas()
-            if layout and layout.AbsoluteContentSize then
-                page.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
-            else
-                local totalHeight = 0
-                for _, child in ipairs(page:GetChildren()) do
-                    if child:IsA("GuiObject") and child.Visible then
-                        totalHeight = totalHeight + child.AbsoluteSize.Y + 5
-                    end
-                end
-                page.CanvasSize = UDim2.new(0, 0, 0, totalHeight + 10)
-            end
-        end
-        
-        layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-            page.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
-        end)
-        
-        page.DescendantAdded:Connect(function(child)
-            if child:IsA("GuiObject") then
-                child:GetPropertyChangedSignal("Visible"):Connect(updateCanvas)
-                child:GetPropertyChangedSignal("Size"):Connect(updateCanvas)
-                task.wait(0.05)
-                updateCanvas()
-            end
-        end)
-        page.ChildRemoved:Connect(function()
-            task.wait(0.05)
-            updateCanvas()
-        end)
-        
         Tab.Page = page
-        Tab.updateCanvas = updateCanvas
+
         self.Tabs[name] = Tab
 
         tabBtn.MouseEnter:Connect(function()
@@ -356,10 +386,12 @@ function Library:CreateWindow(config)
             self:SwitchTab(name)
         end)
 
+        -- Auto-select first tab
         if not self.ActiveTab then
             self:SwitchTab(name)
         end
 
+        -- CreateSection
         function Tab:CreateSection(sectionName)
             Tab.Order = Tab.Order + 1
             create("TextLabel", {
@@ -373,9 +405,9 @@ function Library:CreateWindow(config)
                 LayoutOrder = Tab.Order,
                 Parent = page
             })
-            task.defer(updateCanvas)
         end
 
+        -- CreateToggle
         function Tab:CreateToggle(opts)
             opts = opts or {}
             Tab.Order = Tab.Order + 1
@@ -414,7 +446,7 @@ function Library:CreateWindow(config)
             local knob = create("Frame", {
                 Size = UDim2.new(0, 16, 0, 16),
                 Position = value and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8),
-                BackgroundColor3 = Color3.new(1,1,1),
+                BackgroundColor3 = Color3.new(1, 1, 1),
                 Parent = togBG
             })
             addCorner(knob, 8)
@@ -434,7 +466,6 @@ function Library:CreateWindow(config)
                 tween(togBG, {BackgroundColor3 = value and T.On or T.Off}, 0.2)
                 tween(knob, {Position = value and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)}, 0.2)
                 callback(value)
-                task.defer(updateCanvas)
             end)
 
             local toggleObj = {}
@@ -443,13 +474,12 @@ function Library:CreateWindow(config)
                 tween(togBG, {BackgroundColor3 = value and T.On or T.Off}, 0.2)
                 tween(knob, {Position = value and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)}, 0.2)
                 callback(value)
-                task.defer(updateCanvas)
             end
             function toggleObj:Get() return value end
-            task.defer(updateCanvas)
             return toggleObj
         end
 
+        -- CreateSlider
         function Tab:CreateSlider(opts)
             opts = opts or {}
             Tab.Order = Tab.Order + 1
@@ -533,7 +563,6 @@ function Library:CreateWindow(config)
                         fill.Size = UDim2.new(p, 0, 1, 0)
                         valLbl.Text = tostring(val)
                         callback(val)
-                        task.defer(updateCanvas)
                     end
                 end
             end)
@@ -545,13 +574,12 @@ function Library:CreateWindow(config)
                 fill.Size = UDim2.new(p, 0, 1, 0)
                 valLbl.Text = tostring(value)
                 callback(value)
-                task.defer(updateCanvas)
             end
             function sliderObj:Get() return value end
-            task.defer(updateCanvas)
             return sliderObj
         end
 
+        -- CreateButton
         function Tab:CreateButton(opts)
             opts = opts or {}
             Tab.Order = Tab.Order + 1
@@ -576,13 +604,12 @@ function Library:CreateWindow(config)
                 tween(btn, {BackgroundColor3 = T.Accent}, 0.1)
                 task.delay(0.15, function() tween(btn, {BackgroundColor3 = T.BG3}, 0.2) end)
                 callback()
-                task.defer(updateCanvas)
             end)
 
-            task.defer(updateCanvas)
             return btn
         end
 
+        -- CreateDropdown
         function Tab:CreateDropdown(opts)
             opts = opts or {}
             Tab.Order = Tab.Order + 1
@@ -635,7 +662,7 @@ function Library:CreateWindow(config)
                 Parent = card
             })
             addCorner(optContainer, 6)
-            create("UIListLayout", {
+            local optLayout = create("UIListLayout", {
                 Padding = UDim.new(0, 1),
                 SortOrder = Enum.SortOrder.LayoutOrder,
                 Parent = optContainer
@@ -660,10 +687,10 @@ function Library:CreateWindow(config)
                     value = opt
                     selected.Text = opt
                     open = false
-                    tween(card, {Size = UDim2.new(1, 0, 0, 36)}, 0.2)
+                    local closedH = 36
+                    tween(card, {Size = UDim2.new(1, 0, 0, closedH)}, 0.2)
                     tween(optContainer, {Size = UDim2.new(0.45, 0, 0, 0)}, 0.2)
                     callback(value)
-                    task.defer(updateCanvas)
                 end)
                 table.insert(optButtons, ob)
             end
@@ -674,7 +701,6 @@ function Library:CreateWindow(config)
                 local cardH = open and (36 + optH + 4) or 36
                 tween(card, {Size = UDim2.new(1, 0, 0, cardH)}, 0.25)
                 tween(optContainer, {Size = UDim2.new(0.45, 0, 0, open and optH or 0)}, 0.25)
-                task.defer(updateCanvas)
             end)
 
             local dropObj = {}
@@ -682,7 +708,6 @@ function Library:CreateWindow(config)
                 value = v
                 selected.Text = v
                 callback(v)
-                task.defer(updateCanvas)
             end
             function dropObj:Get() return value end
             function dropObj:Refresh(newOptions)
@@ -710,16 +735,14 @@ function Library:CreateWindow(config)
                         tween(card, {Size = UDim2.new(1, 0, 0, 36)}, 0.2)
                         tween(optContainer, {Size = UDim2.new(0.45, 0, 0, 0)}, 0.2)
                         callback(value)
-                        task.defer(updateCanvas)
                     end)
                     table.insert(optButtons, ob)
                 end
-                task.defer(updateCanvas)
             end
-            task.defer(updateCanvas)
             return dropObj
         end
 
+        -- CreateTextbox
         function Tab:CreateTextbox(opts)
             opts = opts or {}
             Tab.Order = Tab.Order + 1
@@ -767,7 +790,6 @@ function Library:CreateWindow(config)
                 if enter then
                     value = box.Text
                     callback(value)
-                    task.defer(updateCanvas)
                 end
             end)
 
@@ -776,13 +798,12 @@ function Library:CreateWindow(config)
                 value = v
                 box.Text = v
                 callback(v)
-                task.defer(updateCanvas)
             end
             function tbObj:Get() return value end
-            task.defer(updateCanvas)
             return tbObj
         end
 
+        -- CreateLabel
         function Tab:CreateLabel(text)
             Tab.Order = Tab.Order + 1
             local lbl = create("TextLabel", {
@@ -802,19 +823,19 @@ function Library:CreateWindow(config)
             local labelObj = {}
             function labelObj:Set(newText)
                 lbl.Text = "  " .. newText
-                task.defer(updateCanvas)
             end
-            task.defer(updateCanvas)
             return labelObj
         end
 
         return Tab
     end
 
+    -- Notify
     function Window:Notify(opts)
         Library:Notify(opts)
     end
 
+    -- Destroy
     function Window:Destroy()
         ScreenGui:Destroy()
     end
@@ -822,6 +843,9 @@ function Library:CreateWindow(config)
     return Window
 end
 
+----------------------------------------------------------------------
+-- Library:Notify
+----------------------------------------------------------------------
 function Library:Notify(opts)
     opts = opts or {}
     pcall(function()
@@ -833,6 +857,9 @@ function Library:Notify(opts)
     end)
 end
 
+----------------------------------------------------------------------
+-- Library:Destroy
+----------------------------------------------------------------------
 function Library:Destroy()
     for _, gui in ipairs(game:GetService("CoreGui"):GetChildren()) do
         if gui.Name:find("KetamineUI_") then
@@ -841,6 +868,4 @@ function Library:Destroy()
     end
 end
 
--- ===================================================================
--- END OF LIBRARY – NOW COPY YOUR SCRIPT BODY BELOW
--- ===================================================================
+return Library
