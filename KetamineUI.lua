@@ -1,8 +1,3 @@
---[[
-    KetamineUI Library
-    A custom UI library with the Ketamine theme.
-    
-    Usage:
         local Library = loadstring(game:HttpGet("YOUR_RAW_LINK"))()
         
         local Window = Library:CreateWindow({
