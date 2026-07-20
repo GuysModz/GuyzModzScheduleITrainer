@@ -1,15 +1,88 @@
--- ===================================================================
--- KETAMINEUI LIBRARY – WITH HORIZONTAL TAB SCROLLING
--- ===================================================================
+--[[
+    KetamineUI Library
+    A custom UI library with the Ketamine theme.
+    
+    Usage:
+        local Library = loadstring(game:HttpGet("YOUR_RAW_LINK"))()
+        
+        local Window = Library:CreateWindow({
+            Name = "My Script",
+            Subtitle = "v1.0",
+            Size = UDim2.new(0, 380, 0, 500), -- optional, default is now 450x550
+            ToggleKey = Enum.KeyCode.RightControl -- optional
+        })
+        
+        local Tab = Window:CreateTab("Main")
+        
+        Tab:CreateSection("Combat")
+        
+        Tab:CreateToggle({
+            Name = "Aimbot",
+            Default = false,
+            Callback = function(value) end
+        })
+        
+        Tab:CreateSlider({
+            Name = "FOV Radius",
+            Min = 50,
+            Max = 800,
+            Default = 200,
+            Callback = function(value) end
+        })
+        
+        Tab:CreateButton({
+            Name = "Reset Character",
+            Callback = function() end
+        })
+        
+        Tab:CreateDropdown({
+            Name = "Target Part",
+            Options = {"Head", "HumanoidRootPart", "UpperTorso"},
+            Default = "Head",
+            Callback = function(value) end
+        })
+        
+        Tab:CreateTextbox({
+            Name = "Player Name",
+            Default = "",
+            Placeholder = "Enter name...",
+            Callback = function(value) end
+        })
+        
+        Tab:CreateLabel("Status: Active")
+        
+        -- Update elements:
+        toggle:Set(true)
+        slider:Set(150)
+        dropdown:Set("Head")
+        label:Set("Status: Inactive")
+        
+        -- Notifications:
+        Library:Notify({
+            Title = "Success",
+            Text = "Feature enabled!",
+            Duration = 3
+        })
+        
+        -- Destroy:
+        Library:Destroy()
+]]
+
 local Library = {}
 Library.__index = Library
 
+----------------------------------------------------------------------
+-- Services
+----------------------------------------------------------------------
 local Players          = game:GetService("Players")
 local RunService       = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService     = game:GetService("TweenService")
 local LocalPlayer      = Players.LocalPlayer
 
+----------------------------------------------------------------------
+-- Theme
+----------------------------------------------------------------------
 Library.Theme = {
     Accent    = Color3.fromRGB(155, 89, 255),
     AccentDim = Color3.fromRGB(100, 55, 190),
@@ -25,6 +98,9 @@ Library.Theme = {
     Warning   = Color3.fromRGB(255, 180, 80),
 }
 
+----------------------------------------------------------------------
+-- Utility
+----------------------------------------------------------------------
 local function tween(obj, props, dur)
     local t = TweenService:Create(obj, TweenInfo.new(dur or 0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), props)
     t:Play()
@@ -48,6 +124,15 @@ local function addCorner(parent, radius)
     return create("UICorner", {CornerRadius = UDim.new(0, radius or 8), Parent = parent})
 end
 
+local function addStroke(parent, color, thickness, transparency)
+    return create("UIStroke", {
+        Color = color or Library.Theme.Accent,
+        Thickness = thickness or 1.5,
+        Transparency = transparency or 0.3,
+        Parent = parent
+    })
+end
+
 local function addPadding(parent, l, r, t, b)
     return create("UIPadding", {
         PaddingLeft = UDim.new(0, l or 0),
@@ -58,18 +143,23 @@ local function addPadding(parent, l, r, t, b)
     })
 end
 
+----------------------------------------------------------------------
+-- Library:CreateWindow
+----------------------------------------------------------------------
 function Library:CreateWindow(config)
     config = config or {}
     local T = self.Theme
     local windowName = config.Name or "Ketamine UI"
     local subtitle = config.Subtitle or ""
-    local windowSize = config.Size or UDim2.new(0, 380, 0, 500)
+    -- DEFAULT SIZE IS NOW BIGGER (450x550) to fit more tabs
+    local windowSize = config.Size or UDim2.new(0, 450, 0, 550)
     local toggleKey = config.ToggleKey or Enum.KeyCode.RightControl
 
     local Window = {}
     Window.Tabs = {}
     Window.ActiveTab = nil
 
+    -- ScreenGui
     local ScreenGui = create("ScreenGui", {
         Name = "KetamineUI_" .. windowName,
         ResetOnSpawn = false,
@@ -80,6 +170,7 @@ function Library:CreateWindow(config)
     if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
     Window.ScreenGui = ScreenGui
 
+    -- Main Frame
     local MainFrame = create("Frame", {
         Name = "Main",
         Size = windowSize,
@@ -91,8 +182,10 @@ function Library:CreateWindow(config)
         Parent = ScreenGui
     })
     addCorner(MainFrame, 14)
+    addStroke(MainFrame, T.Accent, 1.5, 0.3)
     Window.MainFrame = MainFrame
 
+    -- Title Bar
     local TitleBar = create("Frame", {
         Size = UDim2.new(1, 0, 0, 48),
         BackgroundColor3 = T.BG2,
@@ -100,6 +193,7 @@ function Library:CreateWindow(config)
         Parent = MainFrame
     })
     addCorner(TitleBar, 14)
+    -- Bottom clip to remove bottom rounding
     create("Frame", {
         Size = UDim2.new(1, 0, 0, 14),
         Position = UDim2.new(0, 0, 1, -14),
@@ -108,6 +202,7 @@ function Library:CreateWindow(config)
         Parent = TitleBar
     })
 
+    -- Title text
     create("TextLabel", {
         Size = UDim2.new(1, -100, 0, 22),
         Position = UDim2.new(0, 16, 0, subtitle ~= "" and 6 or 13),
@@ -120,6 +215,7 @@ function Library:CreateWindow(config)
         Parent = TitleBar
     })
 
+    -- Subtitle
     if subtitle ~= "" then
         create("TextLabel", {
             Size = UDim2.new(1, -100, 0, 14),
@@ -134,12 +230,13 @@ function Library:CreateWindow(config)
         })
     end
 
+    -- Close button
     local CloseBtn = create("TextButton", {
         Size = UDim2.new(0, 22, 0, 22),
         Position = UDim2.new(1, -30, 0, 5),
         BackgroundColor3 = T.Error,
         Text = "X",
-        TextColor3 = Color3.new(1,1,1),
+        TextColor3 = Color3.new(1, 1, 1),
         Font = Enum.Font.GothamBold,
         TextSize = 11,
         AutoButtonColor = false,
@@ -150,12 +247,13 @@ function Library:CreateWindow(config)
     CloseBtn.MouseLeave:Connect(function() tween(CloseBtn, {BackgroundColor3 = T.Error}, 0.15) end)
     CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
+    -- Minimize button
     local MinBtn = create("TextButton", {
         Size = UDim2.new(0, 22, 0, 22),
         Position = UDim2.new(1, -56, 0, 5),
         BackgroundColor3 = T.BG3,
         Text = "-",
-        TextColor3 = Color3.new(1,1,1),
+        TextColor3 = Color3.new(1, 1, 1),
         Font = Enum.Font.GothamBold,
         TextSize = 16,
         AutoButtonColor = false,
@@ -165,6 +263,7 @@ function Library:CreateWindow(config)
     MinBtn.MouseEnter:Connect(function() tween(MinBtn, {BackgroundColor3 = T.AccentDim}, 0.15) end)
     MinBtn.MouseLeave:Connect(function() tween(MinBtn, {BackgroundColor3 = T.BG3}, 0.15) end)
 
+    -- Content area (below title bar)
     local ContentArea = create("Frame", {
         Size = UDim2.new(1, 0, 1, -48),
         Position = UDim2.new(0, 0, 0, 48),
@@ -173,7 +272,7 @@ function Library:CreateWindow(config)
     })
     Window.ContentArea = ContentArea
 
-    -- TAB BAR – NOW SCROLLABLE HORIZONTALLY
+    -- Tab bar container – now a ScrollingFrame for horizontal scrolling
     local TabBarContainer = create("Frame", {
         Size = UDim2.new(1, -16, 0, 30),
         Position = UDim2.new(0, 8, 0, 6),
@@ -246,6 +345,7 @@ function Library:CreateWindow(config)
         tween(MainFrame, {Size = minimized and UDim2.new(0, windowSize.X.Offset, 0, 48) or windowSize}, 0.3)
     end)
 
+    -- Toggle visibility
     local guiVisible = true
     UserInputService.InputBegan:Connect(function(input, gpe)
         if gpe then return end
@@ -255,6 +355,7 @@ function Library:CreateWindow(config)
         end
     end)
 
+    -- Switch tab function
     function Window:SwitchTab(tabName)
         for name, tab in pairs(self.Tabs) do
             tab.Page.Visible = (name == tabName)
@@ -273,11 +374,13 @@ function Library:CreateWindow(config)
         end
     end
 
+    -- CreateTab
     function Window:CreateTab(name)
         local Tab = {}
         Tab.Name = name
         Tab.Order = 0
 
+        -- Tab button
         local tabBtn = create("TextButton", {
             Size = UDim2.new(0, 0, 1, 0),
             AutomaticSize = Enum.AutomaticSize.X,
@@ -296,6 +399,7 @@ function Library:CreateWindow(config)
         -- Update tab bar canvas
         task.defer(function() updateTabCanvas() end)
 
+        -- Tab page (scrolling frame)
         local page = create("ScrollingFrame", {
             Size = UDim2.new(1, -8, 1, -4),
             Position = UDim2.new(0, 4, 0, 2),
@@ -363,10 +467,12 @@ function Library:CreateWindow(config)
             self:SwitchTab(name)
         end)
 
+        -- Auto-select first tab
         if not self.ActiveTab then
             self:SwitchTab(name)
         end
 
+        -- CreateSection
         function Tab:CreateSection(sectionName)
             Tab.Order = Tab.Order + 1
             create("TextLabel", {
@@ -383,6 +489,7 @@ function Library:CreateWindow(config)
             task.defer(updateCanvas)
         end
 
+        -- CreateToggle
         function Tab:CreateToggle(opts)
             opts = opts or {}
             Tab.Order = Tab.Order + 1
@@ -457,6 +564,7 @@ function Library:CreateWindow(config)
             return toggleObj
         end
 
+        -- CreateSlider
         function Tab:CreateSlider(opts)
             opts = opts or {}
             Tab.Order = Tab.Order + 1
@@ -559,6 +667,7 @@ function Library:CreateWindow(config)
             return sliderObj
         end
 
+        -- CreateButton
         function Tab:CreateButton(opts)
             opts = opts or {}
             Tab.Order = Tab.Order + 1
@@ -590,6 +699,7 @@ function Library:CreateWindow(config)
             return btn
         end
 
+        -- CreateDropdown
         function Tab:CreateDropdown(opts)
             opts = opts or {}
             Tab.Order = Tab.Order + 1
@@ -727,6 +837,7 @@ function Library:CreateWindow(config)
             return dropObj
         end
 
+        -- CreateTextbox
         function Tab:CreateTextbox(opts)
             opts = opts or {}
             Tab.Order = Tab.Order + 1
@@ -790,6 +901,7 @@ function Library:CreateWindow(config)
             return tbObj
         end
 
+        -- CreateLabel
         function Tab:CreateLabel(text)
             Tab.Order = Tab.Order + 1
             local lbl = create("TextLabel", {
@@ -818,10 +930,12 @@ function Library:CreateWindow(config)
         return Tab
     end
 
+    -- Notify
     function Window:Notify(opts)
         Library:Notify(opts)
     end
 
+    -- Destroy
     function Window:Destroy()
         ScreenGui:Destroy()
     end
@@ -829,6 +943,9 @@ function Library:CreateWindow(config)
     return Window
 end
 
+----------------------------------------------------------------------
+-- Library:Notify
+----------------------------------------------------------------------
 function Library:Notify(opts)
     opts = opts or {}
     pcall(function()
@@ -840,6 +957,9 @@ function Library:Notify(opts)
     end)
 end
 
+----------------------------------------------------------------------
+-- Library:Destroy
+----------------------------------------------------------------------
 function Library:Destroy()
     for _, gui in ipairs(game:GetService("CoreGui"):GetChildren()) do
         if gui.Name:find("KetamineUI_") then
