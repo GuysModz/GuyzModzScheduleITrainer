@@ -377,13 +377,19 @@ function Library:CreateWindow(config)
         
         -- Update canvas size whenever content changes
         local function updateCanvas()
-            local totalHeight = 0
-            for _, child in ipairs(page:GetChildren()) do
-                if child:IsA("GuiObject") and child.Visible then
-                    totalHeight = totalHeight + child.AbsoluteSize.Y + 5
+            -- Use the layout's AbsoluteContentSize if available
+            if layout and layout.AbsoluteContentSize then
+                page.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
+            else
+                -- Fallback: manually calculate
+                local totalHeight = 0
+                for _, child in ipairs(page:GetChildren()) do
+                    if child:IsA("GuiObject") and child.Visible then
+                        totalHeight = totalHeight + child.AbsoluteSize.Y + 5
+                    end
                 end
+                page.CanvasSize = UDim2.new(0, 0, 0, totalHeight + 10)
             end
-            page.CanvasSize = UDim2.new(0, 0, 0, totalHeight + 10)
         end
         
         -- Hook into layout changes
@@ -396,9 +402,15 @@ function Library:CreateWindow(config)
             if child:IsA("GuiObject") then
                 child:GetPropertyChangedSignal("Visible"):Connect(updateCanvas)
                 child:GetPropertyChangedSignal("Size"):Connect(updateCanvas)
-                task.wait(0.1)
+                task.wait(0.05)
                 updateCanvas()
             end
+        end)
+        
+        -- Listen for child removal
+        page.ChildRemoved:Connect(function()
+            task.wait(0.05)
+            updateCanvas()
         end)
         
         Tab.Page = page
